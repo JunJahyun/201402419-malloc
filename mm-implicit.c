@@ -81,6 +81,56 @@ void free (void *ptr) {
 	coalesce(ptr);
 }
 
+void *coalesce(void *bp){
+	
+	size_t prev alloc = GET ALLOC(FTRP(PREV_BLKP(bp)));
+	//이전 블럭의 할당 여부 0 = NO, 1 = YES
+
+	size_t next alloc = GET ALLOC(HDRP (NEXT_BLKP(bp)));
+	//다음 블럭의 할당 여부 0 = NO, 1 = YEs
+
+	size_t size = GET SIZE(HDRP(bp));
+	//현재 블럭의 크기
+
+
+	//case 1 : 이전 블럭, 다음 블럭 최하위 bit가 둘다 1 인 경우 (할당)
+	// 		   다음 블럭과 병합한 뒤 bp return
+
+	if(prev_alloc && next_alloc){
+		return bp;
+	}
+
+	//case2 : 이전 블럭 최하위 bit가 1이고 (할당), 다음 블럭 최하위 bit가 0
+	//		  인 경우(비할당) 다음 블럭과 병합한 뒤 bp return
+
+	else if(prev_alloc && !next_alloc){
+		size += GET_SIZE(HDRP(NEXT_BLKP(bp)));
+		PUT(HDRP(bp), PACK(size, 0));
+		PUT(FTRP(bp), PACK(size, 0));
+	}
+
+
+	//case3 : 이전 블럭 최하위 bit가 0이고 (비할당), 다음 블럭 최하위 bit가 
+	//	      1인 경우(할당) 이전 블럭과 병합한 뒤 새로운 bp return
+	
+	else if(){
+	}
+
+
+	//case4 : 이전 블럭 최하위 bit가 0이고 (비할당), 다음 블럭 최하위 bit가 
+	//        0인경우(비할당) 이전 블럭, 현재 블럭, 다음 블럭을 모두 병합한
+	//		  뒤 새로운 bp return
+
+	else{
+	}
+
+	return bp;
+	//병합된 블럭의 주소 bp return
+
+}
+
+
+
 /*
  * realloc - you may want to look at mm-naive.c
  */
