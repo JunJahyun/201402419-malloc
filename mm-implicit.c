@@ -45,7 +45,20 @@
  * Initialize: return -1 on error, 0 on success.
  */
 int mm_init(void) {
-    return 0;
+    
+	if((heap_listp = mem_sbrk(4 * WSIZE)) == NULL)
+		return -1;
+
+	PUT(heap_listp, 0);
+	PUT(heap_listp + WSIZE, PACK(OVERHEAD, 1));
+	PUT(heap_listp + DSIZE, PACK(OVERHEAD, 1));
+	PUT(heap_listp + WSIZE + DIZE, PACK(0, 1));
+	heap_listp += DSIZE;
+
+	if((extend_heap(CHUNKSIZE / WSIZE)) == NULL)
+		return -1;
+
+	return 0;
 }
 
 /*
@@ -59,7 +72,13 @@ void *malloc (size_t size) {
  * free
  */
 void free (void *ptr) {
-    if(!ptr) return;
+    if(ptr == 0) return;
+	size_t size = GET_SIZE(HDRP (ptr));
+
+	PUT(HDRP(ptr), PACK(size, 0));
+	PUT(FTRP(ptr), PACK(size, 0));
+
+	coalesce(ptr);
 }
 
 /*
