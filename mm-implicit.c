@@ -133,13 +133,13 @@ void free (void *ptr) {
 
 void *coalesce(void *bp){
 	
-	size_t prev alloc = GET ALLOC(FTRP(PREV_BLKP(bp)));
+	size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
 	//이전 블럭의 할당 여부 0 = NO, 1 = YES
 
-	size_t next alloc = GET ALLOC(HDRP (NEXT_BLKP(bp)));
+	size_t next_alloc = GET_ALLOC(HDRP (NEXT_BLKP(bp)));
 	//다음 블럭의 할당 여부 0 = NO, 1 = YEs
 
-	size_t size = GET SIZE(HDRP(bp));
+	size_t size = GET_SIZE(HDRP(bp));
 	//현재 블럭의 크기
 
 
@@ -164,9 +164,13 @@ void *coalesce(void *bp){
 	//	      1인 경우(할당) 이전 블럭과 병합한 뒤 새로운 bp return
 	
 	else if(next_alloc && !prev_alloc){
+
 		size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+		
 		PUT(FTRP(bp), PACK(size, 0));
-		PUT(HDRP(bp), PACK(size, 0));
+		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+		
+		bp = PREV_BLKP(bp);
 	}
 
 
@@ -177,8 +181,8 @@ void *coalesce(void *bp){
 
 	else{
 		size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
-		PUT(HDRP(bp), PACK(size, 0));
-		PUT(FTRP(bp), PACK(size, 0));
+		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+		PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0));
 		bp = PREV_BLKP(bp);
 	
 	}
