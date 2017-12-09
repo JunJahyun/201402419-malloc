@@ -54,11 +54,17 @@
 //주소 p에서 word 읽기, 쓰기
 #define GET(p) (*(size_t *)(p))
 #define PUT(p,val) (*(size_t *)(p) = (val))
+
+//주소 p에서 크기와 할당 된 필드를 읽음
 #define GET_SIZE(p) (GET(p) & ~0x7)
 #define GET_ALLOC(p) (GET(p) & 0x1)
+
+//ptr bp가 주어질 때 주소 계산
 #define HDRP(bp) ((char *)(bp) - WSIZE)
-#define FTRP(bp) ((char*)(bp) + GET_SIZE((char*)(bp) -WSIZE))
-#define PREV_BLKP(bp) ((char*)(bp) - GET_SIZE((char*)(bp) -DSIZE))
+#define FTRP(bp) ((char*)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+
+#define NEXT_BLKP(bp) ((char*)(bp) + GET_SIZE(((char*)(bp) - WSIZE)))
+#define PREV_BLKP(bp) ((char*)(bp) - GET_SIZE(((char*)(bp) - DSIZE)))
 
 
 
@@ -157,8 +163,12 @@ void *coalesce(void *bp){
 	//case3 : 이전 블럭 최하위 bit가 0이고 (비할당), 다음 블럭 최하위 bit가 
 	//	      1인 경우(할당) 이전 블럭과 병합한 뒤 새로운 bp return
 	
-	else if(){
+	else if(next_alloc && !prev_alloc){
+		size += GET_SIZE(HDRP(PREV_BLKP(bp)));
+		PUT(FTRP(bp), PACK(size, 0));
+		PUT(HDRP(bp), PACK(size, 0));
 	}
+
 
 
 	//case4 : 이전 블럭 최하위 bit가 0이고 (비할당), 다음 블럭 최하위 bit가 
@@ -166,6 +176,11 @@ void *coalesce(void *bp){
 	//		  뒤 새로운 bp return
 
 	else{
+		size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(FTRP(NEXT_BLKP(bp)));
+		PUT(HDRP(bp), PACK(size, 0));
+		PUT(FTRP(bp), PACK(size, 0));
+		bp = PREV_BLKP(bp);
+	
 	}
 
 	return bp;
