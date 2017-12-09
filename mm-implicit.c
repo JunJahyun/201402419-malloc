@@ -109,20 +109,47 @@ static void *extend_heap(size_t w){
  * malloc
  */
 void *malloc (size_t size) {
-	
-}
+	char *bp;
+	size_t sizeA, sizeB;
 
-void *mem_sbrk(int incr){
-	char *old_brk = mem_brk;
-
-	if((incr < 0) || ((mem_brk + incr) > mem_max_addr)){
-		errno = ENOMEM;
-		fprintf(stderr, "ERROR: mem_sbrk failed. Ran out of memory...\n");
-		return (void *)-1;
+	if(size == 0){
+		return NULL;
 	}
-	mem_brk += incr;
-	return (void *)old_brk;
+
+	if(size <= DSIZE){
+		sizeA = 2*DSIZE;
+	}
+	else{
+		sizeA = DSIZE * ((size + (DSIZE) + (DSIZE - 1)) / DSIZE);
+	}
+
+	if((bp = find_fit(sizeA)) != NULL){
+		// static void *find_fit(size_t asize) -> free block을 검색. First, Next, Best fir 알고리즘 중 하나를 선택해서 구현하는 함수 구현.
+
+
+		place(bp, sizeA); // static void place(void *bp, size_t asize) -> bp 위치에 asize 크기의 메모리를 위치시켜주는 함수 구현
+		return bp;
+	}
+
+	sizeB = MAX(sizeA, CHUNKSIZE);
+	if((bp = extend_heap(sizeB/WSIZE)) == NULL){
+		return NULL;
+	}
+	
+	place(bp, sizeA);
+	
+	return bp;
+
 }
+
+
+static void *find_fit(size_t asize){
+}
+
+static void place(void *bp, size_t asize){
+}
+
+
 
 /*
  * free
