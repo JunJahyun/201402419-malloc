@@ -86,7 +86,30 @@ int mm_init(void) {
  * malloc
  */
 void *malloc (size_t size) {
-    return NULL;
+	int newsize = ALIGN(size + SIZE_T_SIZE);
+	unsigned char *p = mem_sbrk(newsize);
+	//dbg_printf("malloc %u => %p\n", size, p);
+
+	if((long)p < 0)
+		return NULL;
+	else{
+		p += SIZE_T_SIZE;
+		*SIZE_PTR(p) = size;
+		return p;
+	}
+
+}
+
+void *mem_sbrk(int incr){
+	char *old_brk = mem_brk;
+
+	if((incr < 0) || ((mem_brk + incr) > mem_max_addr)){
+		errno = ENOMEM;
+		fprintf(stderr, "ERROR: mem_sbrk failed. Ran out of memory...\n");
+		return (void *)-1;
+	}
+	mem_brk += incr;
+	return (void *)old_brk;
 }
 
 /*
@@ -156,7 +179,38 @@ void *coalesce(void *bp){
  * realloc - you may want to look at mm-naive.c
  */
 void *realloc(void *oldptr, size_t size) {
-    return NULL;
+ 	size_t oldsize;
+	void *newptr;
+
+	//if size == 0 then this is just free, and we return NULL.
+	if(size == 0){
+		free(oldptr);
+		return 0;
+	}
+	
+	//if oldptr is NULL, then this is just malloc.
+	if(oldptr == NULL){
+		return malloc(size);
+	}
+
+	newptr = malloc(size);
+
+	//if realloc() fails the original block is left untouched
+	if(!newptr){
+		return 0;
+	}
+
+	
+	// Copy the old data.
+	oldsize = *SIZE_PTR(oldptr);
+	if(size < oldsize) oldsize = size;
+	memcpy(newptr, oldptr, oldsize);
+
+	// Free the old block.
+	free(oldptr);
+
+	return newptr;
+
 }
 
 /*
