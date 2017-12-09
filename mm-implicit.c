@@ -79,7 +79,7 @@ int mm_init(void) {
 	PUT(heap_listp, 0);
 	PUT(heap_listp + WSIZE, PACK(OVERHEAD, 1));
 	PUT(heap_listp + DSIZE, PACK(OVERHEAD, 1));
-	PUT(heap_listp + WSIZE + DIZE, PACK(0, 1));
+	PUT(heap_listp + WSIZE + DSIZE, PACK(0, 1));
 	heap_listp += DSIZE;
 
 	if((extend_heap(CHUNKSIZE / WSIZE)) == NULL)
@@ -92,18 +92,7 @@ int mm_init(void) {
  * malloc
  */
 void *malloc (size_t size) {
-	int newsize = ALIGN(size + SIZE_T_SIZE);
-	unsigned char *p = mem_sbrk(newsize);
-	//dbg_printf("malloc %u => %p\n", size, p);
-
-	if((long)p < 0)
-		return NULL;
-	else{
-		p += SIZE_T_SIZE;
-		*SIZE_PTR(p) = size;
-		return p;
-	}
-
+	
 }
 
 void *mem_sbrk(int incr){
