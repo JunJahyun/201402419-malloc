@@ -88,6 +88,23 @@ int mm_init(void) {
 	return 0;
 }
 
+static void *extend_heap(size_t w){
+	char *bp;
+	size_t size;
+
+	size = (w % 2)?(w + 1) * WSIZE : w * WSIZE;
+
+	PUT(HDRP(bp), PACK(size, 0));
+	PUT(FTRP(bp), PACK(size, 0));
+	PUT(HDRP(NEXT_BLKP(bp)), PACK(0,1));
+
+	return coalesce(bp);
+
+}
+
+
+
+
 /*
  * malloc
  */
