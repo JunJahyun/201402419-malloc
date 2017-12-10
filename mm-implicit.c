@@ -41,6 +41,9 @@
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(p) (((size_t)(p) + (ALIGNMENT-1)) & ~0x7)
 
+#define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
+#define SIZE_PTR(p) ((size_t*)(((char*)(p)) - SIZE_T_SIZE))
+
 #define WSIZE 4
 #define DSIZE 8
 #define CHUNKSIZE (1<<12)
@@ -67,14 +70,13 @@
 #define PREV_BLKP(bp) ((char*)(bp) - GET_SIZE(((char*)(bp) - DSIZE)))
 
 
-
 static char *heap_listp = 0;
 static char *next_bp;
 
 static void *extend_heap(size_t words);
 static void *find_fit(size_t asize);
 static void *coalesce(void *bp);
-
+static void place(void *bp, size_t asize);
 
 /*
  * Initialize: return -1 on error, 0 on success.
