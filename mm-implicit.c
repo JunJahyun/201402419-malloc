@@ -41,8 +41,6 @@
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(p) (((size_t)(p) + (ALIGNMENT-1)) & ~0x7)
 
-#define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
-#define SIZE_PTR(p) ((size_t*)(((char*)(p)) - SIZE_T_SIZE))
 
 #define WSIZE 4
 #define DSIZE 8
@@ -55,8 +53,8 @@
 #define PACK(size, alloc) ((size) | (alloc))
 
 //주소 p에서 word 읽기, 쓰기
-#define GET(p) (*(size_t *)(p))
-#define PUT(p,val) (*(size_t *)(p) = (val))
+#define GET(p) (*(unsigned int *)(p))
+#define PUT(p,val) (*(unsigned int *)(p) = (val))
 
 //주소 p에서 크기와 할당 된 필드를 읽음
 #define GET_SIZE(p) (GET(p) & ~0x7)
@@ -300,7 +298,7 @@ void *realloc(void *oldptr, size_t size) {
 
 	
 	// Copy the old data.
-	oldsize = *SIZE_PTR(oldptr);
+	oldsize = GET_SIZE(HDRP(oldptr));
 	if(size < oldsize) oldsize = size;
 	memcpy(newptr, oldptr, oldsize);
 
