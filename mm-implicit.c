@@ -68,6 +68,11 @@
 
 
 
+static char *heap_listp = 0;
+static char *next_bp;
+
+
+
 /*
  * Initialize: return -1 on error, 0 on success.
  */
@@ -80,7 +85,9 @@ int mm_init(void) {
 	PUT(heap_listp + WSIZE, PACK(OVERHEAD, 1));
 	PUT(heap_listp + DSIZE, PACK(OVERHEAD, 1));
 	PUT(heap_listp + WSIZE + DSIZE, PACK(0, 1));
-	heap_listp += DSIZE;
+	heap_listp += 4*WSIZE;
+
+	next_bp = heap_listp;
 
 	if((extend_heap(CHUNKSIZE / WSIZE)) == NULL)
 		return -1;
@@ -88,11 +95,15 @@ int mm_init(void) {
 	return 0;
 }
 
-static void *extend_heap(size_t w){
+static void *extend_heap(size_t words){
 	char *bp;
 	size_t size;
 
-	size = (w % 2)?(w + 1) * WSIZE : w * WSIZE;
+	size = (words % 2)?(words + 1) * WSIZE : words * WSIZE;
+	
+	if((long)(bp = mem_sbrk(size)) == -1){
+		return NULL;
+	}
 
 	PUT(HDRP(bp), PACK(size, 0));
 	PUT(FTRP(bp), PACK(size, 0));
@@ -124,10 +135,8 @@ void *malloc (size_t size) {
 	}
 
 	if((bp = find_fit(sizeA)) != NULL){
-		// static void *find_fit(size_t asize) -> free block을 검색. First, Next, Best fir 알고리즘 중 하나를 선택해서 구현하는 함수 구현.
-
-
-		place(bp, sizeA); // static void place(void *bp, size_t asize) -> bp 위치에 asize 크기의 메모리를 위치시켜주는 함수 구현
+		
+		place(bp, sizeA);
 		return bp;
 	}
 
@@ -193,10 +202,10 @@ void free (void *ptr) {
 	PUT(HDRP(ptr), PACK(size, 0));
 	PUT(FTRP(ptr), PACK(size, 0));
 
-	coalesce(ptr);
+	next_bp = coalesce(ptr);
 }
 
-void *coalesce(void *bp){
+static void *coalesce(void *bp){
 	
 	size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
 	//이전 블럭의 할당 여부 0 = NO, 1 = YES
