@@ -71,6 +71,9 @@
 static char *heap_listp = 0;
 static char *next_bp;
 
+static void *extend_heap(size_t words);
+static void *find_fit(size_t asize);
+static void *coalesce(void *bp);
 
 
 /*
