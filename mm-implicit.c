@@ -144,6 +144,21 @@ void *malloc (size_t size) {
 
 
 static void *find_fit(size_t asize){
+	char* bp;
+	bp = next_bp;
+
+
+	while(GET_SIZE(HDRP(bp)) > 0){
+		if(!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp)))){
+			next_bp = bp;
+			return bp;
+		}
+
+		bp = NEXT_BLKP(bp);
+	}
+
+	return NULL;
+
 }
 
 static void place(void *bp, size_t asize){
