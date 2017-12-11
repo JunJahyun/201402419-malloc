@@ -76,6 +76,8 @@ static void *find_fit(size_t asize);
 static void *coalesce(void *bp);
 static void place(void *bp, size_t asize);
 
+int a;
+
 /*
  * Initialize: return -1 on error, 0 on success.
  */
@@ -88,8 +90,7 @@ int mm_init(void) {
 	PUT(heap_listp + WSIZE, PACK(OVERHEAD, 1));
 	PUT(heap_listp + DSIZE, PACK(OVERHEAD, 1));
 	PUT(heap_listp + WSIZE + DSIZE, PACK(0, 1));
-	heap_listp += 4*WSIZE;
-
+	heap_listp += DSIZE;
 	next_bp = heap_listp;
 
 	if((extend_heap(CHUNKSIZE / WSIZE)) == NULL)
@@ -156,6 +157,7 @@ void *malloc (size_t size) {
 
 
 static void *find_fit(size_t asize){
+
 	char* bp;
 	bp = next_bp;
 
@@ -170,7 +172,6 @@ static void *find_fit(size_t asize){
 	}
 
 	return NULL;
-
 }
 
 static void place(void *bp, size_t asize){
