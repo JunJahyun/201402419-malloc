@@ -249,7 +249,32 @@ static void *coalesce(void *bp){
  * realloc - you may want to look at mm-naive.c
  */
 void *realloc(void *oldptr, size_t size) {
-    return NULL;
+	
+	size_t oldsize;
+	void *newptr;
+
+	if(size == 0){
+		free(oldptr);
+		return 0;
+	}
+	
+	if(oldptr == NULL){
+		return malloc(size);
+	}
+
+	newptr = malloc(size);
+
+	if(!newptr){
+		return 0;
+	}
+
+	oldsize = *SIZE_PTR(oldptr);
+	if(size < oldsize) oldsize = size;
+	memcpy(newptr, oldptr, oldsize);
+
+	free(oldptr);
+
+	return newptr;
 }
 
 /*
@@ -258,7 +283,13 @@ void *realloc(void *oldptr, size_t size) {
  * needed to run the traces.
  */
 void *calloc (size_t nmemb, size_t size) {
-    return NULL;
+    size_t bytes = nmemb * size;
+	void *newptr;
+
+	newptr = malloc(bytes);
+	memset(newptr, 0, bytes);
+
+	return newptr;
 }
 
 
