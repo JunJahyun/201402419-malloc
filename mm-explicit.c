@@ -100,7 +100,7 @@ int mm_init(void) {
 	// Move heap pointer over to footer
 	h_ptr += DSIZE + DSIZE;
 	
-	f_ptr = h_ptr + DSIZE;	//free 포인터가 헤더와 PREV사이로 이동
+	f_ptr = h_ptr + DSIZE;
 	
 	PUT(NEXT_FREEP(h_ptr), NEXT_BLKP(h_ptr));
 
