@@ -48,10 +48,10 @@
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
-#define PACK(size, alloc) ((unsigned) ((size) | (alloc)))
+#define PACK(size, alloc) ((size) | (alloc))
 
-#define GET(p) (*(unsigned *)(p))
-#define PUT(p, val) (*(unsigned *)(p) = (unsigned)(val))
+#define GET(p) (*(unsigned int*)(p))
+#define PUT(p, val) (*(unsigned int*)(p) = val)
 #define GET8(p) (*(unsigned long *)(p))
 #define PUT8(p, val) (*(unsigned long *)(p) = (unsigned long)(val))
 
@@ -73,16 +73,23 @@
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(p) (((size_t)(p) + (ALIGNMENT-1)) & ~0x7)
 
+int h_ptr = 0;
+int f_ptr = 0;
+
+inline void *extend_heap(size_t words);
+static void *find_fit(size_t asize);
+static void place(void *bp, size_t asize);
+static void *coalesce(void *bp);
+
 /*
  * Initialize: return -1 on error, 0 on success.
  */
 int mm_init(void) {
 	
 	// Request memory for the initial empty heap
-	if(h_ptr = mem_sbrk(DSIZE + 4 * HDRSIZE)) == NULL)
+	if(h_ptr = mem_sbrk(DSIZE + 4 * HDRSIZE)) == NULL
 		return -1;
-	heap_start = h_ptr;
-
+	
 	PUT(h_ptr, NULL);
 	PUT(h_ptr + WSIZE, NULL);
 	PUT(h_ptr + DSIZE, 0);
@@ -92,14 +99,13 @@ int mm_init(void) {
 
 	// Move heap pointer over to footer
 	h_ptr += DSIZE + DSIZE;
-
-	// Leave room for the previous and next pointers, place epilogue 3 words down
-	epilogue = h_ptr + HDRSIZE;
+	
+	f_ptr = h_ptr + DSIZE;	//free 포인터가 헤더와 PREV사이로 이동
+	
 
 	// Extend the empty heap with a free block of CHUNKSIZE bytes
 	if(extend_heap(CHUNKSIZE/WSIZE) == NULL)
 		return -1;
-
 
 	return 0;
 }
@@ -159,7 +165,7 @@ void *malloc (size_t size) {
 
 	//free list에서 적절한 블록을 찾지 못했으면 힙을 늘려서 할당
 	extendsize = MAX(asize, CHUNKSIZE);
-	if(bp = extend_heap(extendsize/WSIZE)) == NULL)
+	if(bp = extend_heap(extendsize/WSIZE)) == NULL
 		return NULL;
 
 	place(bp, asize);
@@ -168,6 +174,15 @@ void *malloc (size_t size) {
 }
 
 static void *find_fit(size_t asize){
+	void *bp;
+
+	for(bp = f_ptr; GET_ALLOC(HDRP(bp)) == 0; bp = NEXT_FREEP(bp)){
+		if(asize <= (size_t)GET_SIZE(HDRP(bp))){
+			return bp;
+		}
+	}
+	return NULL;
+
 }
 
 static void place(void *bp, size_t asize){
@@ -268,7 +283,7 @@ void *realloc(void *oldptr, size_t size) {
 		return 0;
 	}
 
-	oldsize = *SIZE_PTR(oldptr);
+	oldsize = GET_SIZE(HDRP(oldptr));
 	if(size < oldsize) oldsize = size;
 	memcpy(newptr, oldptr, oldsize);
 
