@@ -38,6 +38,38 @@
 /* single word (4) or double word (8) alignment */
 #define ALIGNMENT 8
 
+#define HDRSIZE 4
+#define FTRSIZE 4
+#define WSIZE 4
+#define DSIZE 8
+#define CHUNKSIZE (1<<12)
+#define OVERHEAD
+
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+
+#define PACK(size, alloc) ((unsigned) ((size) | (alloc)))
+
+#define GET(p) (*(unsigned *)(p))
+#define PUT(p, val) (*(unsigned *)(p) = (unsigned)(val))
+#define GET8(p) (*(unsigned long *)(p))
+#define PUT8(p, val) (*(unsigned long *)(p) = (unsigned long)(val))
+
+#define GET_SIZE(p) (GET(p) & ~0x7)
+#define GET_ALLOC(p) (GET(p) & 0x1)
+
+#define HDRP(bp) ((char *)(bp) - WSIZE)
+#define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
+
+#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)))
+#define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE((char*)(bp) - DSIZE))
+
+#define NEXT_FREEP(bp) ((char *)(bp))
+#define PREV_FREEP(bp) ((char *)(bp) + WSIZE)
+
+#define NEXT_FREE_BLKP(bp) ((char *)GET8((char *)(bp)))
+#define PREV_FREE_BLKP(bp) ((char *)GET8((char *)(bp) + WSIZE))
+
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(p) (((size_t)(p) + (ALIGNMENT-1)) & ~0x7)
 
@@ -73,10 +105,12 @@ int mm_init(void) {
 }
 
 inline void *extend_heap(size_t words){
-	unsigned *old_epilogue;
-	char *bp;
-	unsigned size;
 	
+	char *bp;
+	char *oldp;
+	size_t size;
+
+
 	// Allocate an even number of words to maintain alignment
 	size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;
 
@@ -84,16 +118,17 @@ inline void *extend_heap(size_t words){
 	if((long)(bp = mem_sbrk(size)) < 0)
 		return NULL;
 
-	// Save the old epilogue pointer
-	old_epilogue = epilogue;
-	epilogue = bp + size - HDRSIZE;
+	PUT(HDRP(bp), PACK(size,0));		//확장 후 헤더
+	PUT(FTRP(bp), PACK(size,0));		//확장 후 푸터
+	PUT(NEXT_FREEP(bp), NEXT_BLKP(bp)); //다음 블록 에필로그
 
-	// Write in the header, footer, and new epilogue
-	PUT(HDRP(bp), PACK(size,0));
-	PUT(FTRP(bp), PACK(size,0));
-	PUT(epilogue, PACK(0,1));
+	for(oldp = h_ptr; NEXT_FREE_BLKP(oldp) != bp; oldp = NEXT_FREE_BLKP(oldp)){
+	PUT(PREV_FREEP(bp), oldp);
+	}
+	
+	bp = coalesce(bp);
 
-	return coalesce(bp);
+	return bp;
 }
 
 
@@ -106,9 +141,15 @@ void *malloc (size_t size) {
 	unsigned asize;			// Block size adjusted for alignment and overhead
 	unsigned extendsize;	// Amount to extend heap if no fit
 
-	// size가 올바르지 않을 때 예외처리 (구현)
+	if(size <= 0) {		
+		return NULL;
+	}
 	
-	// block의 크기 결정 (구현)
+	if(h_ptr == 0){
+		mm_init();
+	}
+
+	asize = ALIGN(size + OVERHEAD);
 
 	// 결정한 크기에 알맞은 블록을 list에서 검색하여 해당 위치에 할당
 	if((bp = find_fit(asize)) != NULL){
@@ -126,11 +167,24 @@ void *malloc (size_t size) {
 	return NULL;
 }
 
+static void *find_fit(size_t asize, void *bp){
+
+}
+
+
+
+
+
 /*
  * free
  */
 void free (void *ptr) {
     if(!ptr) return;
+	size_t size = GET_SIZE(HDRP (ptr));
+
+	PUT(HDRP(ptr), PACK(size, 0));
+	PUT(FTRP(ptr), PACK(size, 0));
+
 }
 
 /*
