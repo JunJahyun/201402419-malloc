@@ -43,15 +43,15 @@
 #define WSIZE 4
 #define DSIZE 8
 #define CHUNKSIZE (1<<12)
-#define OVERHEAD
+#define OVERHEAD 8
 
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 #define PACK(size, alloc) ((size) | (alloc))
 
-#define GET(p) (*(unsigned int*)(p))
-#define PUT(p, val) (*(unsigned int*)(p) = val)
+#define GET(p) (*(unsigned *)(p))
+#define PUT(p, val) (*(unsigned *)(p) = (unsigned)(val))
 #define GET8(p) (*(unsigned long *)(p))
 #define PUT8(p, val) (*(unsigned long *)(p) = (unsigned long)(val))
 
@@ -61,14 +61,14 @@
 #define HDRP(bp) ((char *)(bp) - WSIZE)
 #define FTRP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE)
 
-#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(HDRP(bp)))
+#define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE((char *)(bp) - DSIZE))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE((char*)(bp) - DSIZE))
 
 #define NEXT_FREEP(bp) ((char *)(bp))
 #define PREV_FREEP(bp) ((char *)(bp) + WSIZE)
 
-#define NEXT_FREE_BLKP(bp) ((char *)GET8((char *)(bp)))
-#define PREV_FREE_BLKP(bp) ((char *)GET8((char *)(bp) + WSIZE))
+#define NEXT_FREE_BLKP(bp) ((char *)GET((char *)(bp)))
+#define PREV_FREE_BLKP(bp) ((char *)GET((char *)(bp) + WSIZE))
 
 /* rounds up to the nearest multiple of ALIGNMENT */
 #define ALIGN(p) (((size_t)(p) + (ALIGNMENT-1)) & ~0x7)
@@ -76,7 +76,7 @@
 int h_ptr = 0;
 int f_ptr = 0;
 
-inline void *extend_heap(size_t words);
+static void *extend_heap(size_t words);
 static void *find_fit(size_t asize);
 static void place(void *bp, size_t asize);
 static void *coalesce(void *bp);
@@ -87,7 +87,7 @@ static void *coalesce(void *bp);
 int mm_init(void) {
 	
 	// Request memory for the initial empty heap
-	if(h_ptr = mem_sbrk(DSIZE + 4 * HDRSIZE)) == NULL
+	if((h_ptr = mem_sbrk(DSIZE + 4 * HDRSIZE)) == NULL)
 		return -1;
 	
 	PUT(h_ptr, NULL);
@@ -102,6 +102,7 @@ int mm_init(void) {
 	
 	f_ptr = h_ptr + DSIZE;	//free 포인터가 헤더와 PREV사이로 이동
 	
+	PUT(NEXT_FREEP(h_ptr), NEXT_BLKP(h_ptr));
 
 	// Extend the empty heap with a free block of CHUNKSIZE bytes
 	if(extend_heap(CHUNKSIZE/WSIZE) == NULL)
@@ -110,7 +111,7 @@ int mm_init(void) {
 	return 0;
 }
 
-inline void *extend_heap(size_t words){
+static void *extend_heap(size_t words){
 	
 	char *bp;
 	char *oldp;
@@ -126,10 +127,11 @@ inline void *extend_heap(size_t words){
 
 	PUT(HDRP(bp), PACK(size,0));		//확장 후 헤더
 	PUT(FTRP(bp), PACK(size,0));		//확장 후 푸터
+	PUT(HDRP(NEXT_BLKP(bp)), PACK(0,1));
 	PUT(NEXT_FREEP(bp), NEXT_BLKP(bp)); //다음 블록 에필로그
 
 	for(oldp = h_ptr; NEXT_FREE_BLKP(oldp) != bp; oldp = NEXT_FREE_BLKP(oldp)){
-	PUT(PREV_FREEP(bp), oldp);
+		PUT(PREV_FREEP(bp), oldp);
 	}
 	
 	bp = coalesce(bp);
@@ -165,7 +167,7 @@ void *malloc (size_t size) {
 
 	//free list에서 적절한 블록을 찾지 못했으면 힙을 늘려서 할당
 	extendsize = MAX(asize, CHUNKSIZE);
-	if(bp = extend_heap(extendsize/WSIZE)) == NULL
+	if((bp = extend_heap(extendsize/WSIZE)) == NULL)
 		return NULL;
 
 	place(bp, asize);
@@ -201,12 +203,19 @@ static void place(void *bp, size_t asize){
 		PUT(NEXT_FREEP(prevP), bp);
 		PUT(PREV_FREEP(bp), prevP);
 		PUT(NEXT_FREEP(bp), nextP);
+		if(GET_SIZE(HDRP(nextP)) != 0){
+			PUT(PREV_FREEP(nextP), bp);
+		}
 	}
 	else{
 		PUT(HDRP(bp), PACK(bsize, 1));
 		PUT(FTRP(bp), PACK(bsize, 1));
 		PUT(NEXT_FREEP(prevP), nextP);
+		if(GET_SIZE(HDRP(nextP)) != 0){
+			PUT(PREV_FREEP(nextP), prevP);
+		}
 	}
+
 }
 
 
