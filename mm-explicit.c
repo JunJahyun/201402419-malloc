@@ -167,11 +167,32 @@ void *malloc (size_t size) {
 	return NULL;
 }
 
-static void *find_fit(size_t asize, void *bp){
-
+static void *find_fit(size_t asize){
 }
 
+static void place(void *bp, size_t asize){
+	
+	size_t bsize = GET_SIZE(HDRP(bp));
+	void *prevP = PREV_FREE_BLKP(bp);
+	void *nextP = NEXT_FREE_BLKP(bp);
 
+	if((bsize - asize) >= (2*DSIZE)){
+		PUT(HDRP(bp), PACK(asize, 1));
+		PUT(FTRP(bp), PACK(asize, 1));
+
+		bp = NEXT_BLKP(bp);
+		PUT(HDRP(bp), PACK(bsize - asize, 0));
+		PUT(FTRP(bp), PACK(bsize - asize, 0));
+		PUT(NEXT_FREEP(prevP), bp);
+		PUT(PREV_FREEP(bp), prevP);
+		PUT(NEXT_FREEP(bp), nextP);
+	}
+	else{
+		PUT(HDRP(bp), PACK(bsize, 1));
+		PUT(FTRP(bp), PACK(bsize, 1));
+		PUT(NEXT_FREEP(prevP), nextP);
+	}
+}
 
 
 
@@ -181,9 +202,46 @@ static void *find_fit(size_t asize, void *bp){
 void free (void *ptr) {
     if(!ptr) return;
 	size_t size = GET_SIZE(HDRP (ptr));
+	
+	if(h_ptr == 0){
+		mm_init();
+	}
 
 	PUT(HDRP(ptr), PACK(size, 0));
 	PUT(FTRP(ptr), PACK(size, 0));
+	coalesce(ptr);
+}
+
+static void *coalesce(void *bp){
+	size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp)));
+	size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp)));
+	size_t size = GET_SIZE(HDRP(bp));
+
+	if(prev_alloc && next_alloc){
+		return bp;
+	}
+		
+	if(!next_alloc){
+		size = size + GET_SIZE(HDRP(NEXT_BLKP(bp)));
+	
+		PUT(NEXT_FREEP(bp), NEXT_FREE_BLKP(NEXT_BLKP(bp)));
+		PUT(PREV_FREEP(NEXT_FREE_BLKP(bp)), bp);
+		PUT(HDRP(bp), PACK(size, 0));
+		PUT(FTRP(bp), PACK(size, 0));
+	}
+	
+	if(!prev_alloc) {
+		size = size + GET_SIZE(HDRP(PREV_BLKP(bp)));
+		PUT(NEXT_FREEP(PREV_BLKP(bp)), NEXT_FREE_BLKP(bp));
+		PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0));
+		PUT(FTRP(PREV_BLKP(bp)), PACK(size, 0));
+
+		bp = PREV_BLKP(bp);
+		PUT(PREV_FREEP(NEXT_FREE_BLKP(bp)), bp);
+
+	}
+
+	return bp;
 
 }
 
